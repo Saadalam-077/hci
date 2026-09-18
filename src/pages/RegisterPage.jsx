@@ -66,10 +66,10 @@ const RegisterPage = ({ onRegister, onNavigate }) => {
           <div>
             <label className="block text-slate-300 text-sm mb-2">Section | الشعبة</label>
             <select value={form.sectionNumber} onChange={(e) => setForm({...form, sectionNumber: e.target.value})} className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-cyan-500" disabled={loading}>
-              <option value="HCI-101">HCI-101</option>
-              <option value="HCI-102">HCI-102</option>
-              <option value="2444">2444</option>
-              <option value="2445">2445</option>
+              <option value="273">273</option>
+              <option value="274">274</option>
+              <option value="287">287</option>
+              <option value="288">288</option>
             </select>
           </div>
 
