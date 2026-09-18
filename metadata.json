@@ -1,0 +1,6 @@
+{
+  "name": "Human-Computer Interaction | تفاعل الإنسان والحاسب",
+  "description": "Educational platform for Human-Computer Interaction (تفاعل الإنسان والحاسب) featuring interactive weekly HCI lessons, UI/UX design heuristics, exercises, student progress tracking, and instructor dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
