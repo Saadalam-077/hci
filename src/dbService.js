@@ -24,38 +24,19 @@ export function saveLocalStudents(students) {
 let activeTable = 'hci_students';
 
 export async function loginStudent(studentNumber, password) {
-  // 1. Try preferred table 'hci_students'
+  // Password is checked inside the database (hci_students first, then cp2_students).
   try {
-    const { data, error } = await supabase
-      .from('hci_students')
-      .select('*')
-      .eq('student_number', studentNumber)
-      .eq('password', password)
-      .single();
-
-    if (!error && data) {
-      activeTable = 'hci_students';
+    const { data, error } = await supabase.rpc('hci_student_login', {
+      p_student_number: studentNumber.trim(),
+      p_password: password
+    });
+    if (!error && data?.success) {
+      activeTable = data.source || 'hci_students';
       return { success: true, student: data };
     }
+    if (error) console.warn('Supabase login failed, attempting local fallback', error);
   } catch (e) {
-    console.warn('hci_students query failed, attempting cp2_students fallback', e);
-  }
-
-  // 2. Try fallback table 'cp2_students'
-  try {
-    const { data, error } = await supabase
-      .from('cp2_students')
-      .select('*')
-      .eq('student_number', studentNumber)
-      .eq('password', password)
-      .single();
-
-    if (!error && data) {
-      activeTable = 'cp2_students';
-      return { success: true, student: data };
-    }
-  } catch (e) {
-    console.warn('cp2_students query failed, attempting local fallback', e);
+    console.warn('Supabase login failed, attempting local fallback', e);
   }
 
   // 3. Try local mock storage fallback
@@ -83,56 +64,23 @@ export async function registerStudent(formData) {
     return { success: false, message: 'Student number already registered' };
   }
 
-  // 1. Try inserting to 'hci_students'
   try {
-    const { data: existing } = await supabase
-      .from('hci_students')
-      .select('id')
-      .eq('student_number', formData.studentNumber)
-      .single();
-
-    if (existing) {
-      return { success: false, message: 'Student number already registered in Supabase' };
-    }
-
-    const { data, error } = await supabase
-      .from('hci_students')
-      .insert([newStudent])
-      .select()
-      .single();
-
-    if (!error && data) {
+    const { data, error } = await supabase.rpc('hci_register_student', {
+      p_student_name: formData.studentName.trim(),
+      p_student_number: formData.studentNumber.trim(),
+      p_section_number: formData.sectionNumber,
+      p_password: formData.password
+    });
+    if (!error) {
+      if (!data?.success) {
+        return { success: false, message: 'Student number already registered in Supabase' };
+      }
       activeTable = 'hci_students';
-      return { success: true, student: data };
+      return { success: true, student: data.student };
     }
+    console.warn('Supabase registration failed, falling back to local storage', error);
   } catch (e) {
-    console.warn('Supabase hci_students insert failed, attempting cp2_students or local fallback', e);
-  }
-
-  // 2. Try inserting to 'cp2_students'
-  try {
-    const { data: existing } = await supabase
-      .from('cp2_students')
-      .select('id')
-      .eq('student_number', formData.studentNumber)
-      .single();
-
-    if (existing) {
-      return { success: false, message: 'Student number already registered in Supabase' };
-    }
-
-    const { data, error } = await supabase
-      .from('cp2_students')
-      .insert([newStudent])
-      .select()
-      .single();
-
-    if (!error && data) {
-      activeTable = 'cp2_students';
-      return { success: true, student: data };
-    }
-  } catch (e) {
-    console.warn('Supabase cp2_students insert failed, falling back to local storage', e);
+    console.warn('Supabase registration failed, falling back to local storage', e);
   }
 
   // 3. Fallback to local storage
@@ -172,7 +120,7 @@ export async function fetchAllStudents() {
   try {
     const { data, error } = await supabase
       .from('hci_students')
-      .select('*')
+      .select('id, student_name, student_number, section_number, progress')
       .order('student_name');
 
     if (!error && data && data.length > 0) {
@@ -182,7 +130,7 @@ export async function fetchAllStudents() {
       // Try cp2_students
       const { data: cp2Data, error: cp2Error } = await supabase
         .from('cp2_students')
-        .select('*')
+        .select('id, student_name, student_number, section_number, progress')
         .order('student_name');
       if (!cp2Error && cp2Data) {
         dbStudents = cp2Data;
@@ -229,4 +177,17 @@ export async function resetStudentRecordProgress(id) {
     locals[idx].progress = {};
     saveLocalStudents(locals);
   }
+}
+
+export async function resetStudentPassword(studentNumber, recoveryCode, newPassword) {
+  const { data, error } = await supabase.rpc('hci_reset_student_password', {
+    p_student_number: studentNumber.trim(),
+    p_recovery_code: recoveryCode.trim(),
+    p_new_password: newPassword
+  });
+  if (error) {
+    console.error('Password recovery error:', error);
+    return false;
+  }
+  return data === true;
 }
